@@ -19,12 +19,12 @@ const config: Config = {
   url: "https://github.com",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/hooklytics/",
+  baseUrl: "/hooklytics-docs/",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: "vingtai", // Usually your GitHub org/user name.
-  projectName: "hooklytics", // Usually your repo name.
+  projectName: "hooklytics-docs", // Usually your repo name.
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
