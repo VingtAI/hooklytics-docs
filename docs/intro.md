@@ -1,4 +1,3 @@
-
 # Analytics Hooks Documentation
 
 A comprehensive React hook library for tracking user interactions and analytics events with element reference support.
@@ -35,9 +34,26 @@ function App() {
   return (
     <AnalyticsProvider
       config={{
-        environment: 'dev',          // Optional: 'dev' | 'prod'
-        batchInterval: 5000,         // Optional: how often to batch events (ms)
-        metadataInterval: 30000,     // Optional: how often to send metadata heartbeat (ms)
+        environment: 'dev',                    // Optional: 'dev' | 'prod'
+        batchInterval: 1000,                   // Optional: how often to batch events (ms)
+        metadataInterval: 5000,                // Optional: how often to send metadata heartbeat (ms)
+        sendMetadata: true,                    // Optional: whether to send metadata heartbeats
+        sendMetadataOnlyWhenVisible: false,    // Optional: only send metadata when page is visible
+        defaultMetadata: {                     // Optional: additional default metadata, comes with this
+          "language": "en-GB",
+          "page_title": "Vite + React + TS",
+          "pathname": "/",
+          "querystring": "",
+          "referrer": "http://localhost:5173/",
+          "screen_height": 1200,
+          "screen_width": 1200,
+          "user_agent": "Mozilla",
+          "timezone": "",
+          "url": "http://localhost:5173/"
+        },
+        userId: 'user123',                     // Optional: user identifier
+        sessionId: 'session456',               // Optional: session identifier
+        debug: false,                          // Optional: enable debug logging
       }}
     >
       <YourApp />
@@ -50,11 +66,17 @@ function App() {
 
 The `AnalyticsProvider` accepts an optional `config` object:
 
-| Option             | Type              | Default | Description                                    |
-| ------------------ | ----------------- | ------- | ---------------------------------------------- |
-| `environment`      | `'dev' \| 'prod'` | `prod`  | Enables dev logs when set to `'dev'`           |
-| `batchInterval`    | `number`          | `5000`  | Interval (in ms) to batch and send events      |
-| `metadataInterval` | `number`          | `30000` | Interval (in ms) to send core environment data |
+| Option                         | Type                    | Default | Description                                           |
+| ------------------------------ | ----------------------- | ------- | ----------------------------------------------------- |
+| `environment`                  | `'dev' \| 'prod'`       | `prod`  | Enables dev logs when set to `'dev'`                 |
+| `batchInterval`                | `number`                | `1000`  | Interval (in ms) to batch and send events            |
+| `metadataInterval`             | `number`                | `5000`  | Interval (in ms) to send core environment data       |
+| `sendMetadata`                 | `boolean`               | `true`  | Whether to automatically send metadata heartbeats    |
+| `sendMetadataOnlyWhenVisible`  | `boolean`               | `false` | Only send metadata when page is visible              |
+| `defaultMetadata`              | `Record<string, any>`   | `{}`    | Additional default metadata to include with events   |
+| `userId`                       | `any`                   | -       | User identifier to include in default metadata       |
+| `sessionId`                    | `any`                   | -       | Session identifier to include in default metadata    |
+| `debug`                        | `boolean`               | `false` | Enable debug logging for events                      |
 
 ---
 
@@ -66,19 +88,36 @@ All tracked events follow this structure:
 
 ```tsx
 interface Event {
-  type: string;                    // Event type identifier
-  metadata: Record<string, any>;   // Custom event data
-  timestamp: number;               // Event timestamp
-  elementRef?: HTMLElement;        // Reference to DOM element
-  elementPath?: string;            // CSS selector path to element
-  elementId?: string;              // Custom element identifier
+  type: string;                              // Event type identifier
+  metadata: Record<string, any>;             // Custom event data
+  defaultMetadata: Record<string, any>;      // Automatic environment data
+  timestamp: number;                         // Event timestamp
+  element: {                                 // Element information
+    elementRef?: HTMLElement;                // Reference to DOM element
+    elementPath?: string;                    // CSS selector path to element
+    elementId?: string;                      // Custom element identifier
+  };
 }
-
-
 ```
----
 
-*Continue with your hook references, patterns, and best practices...*
+### Default Metadata
+
+The library automatically includes environment metadata with every event:
+
+```tsx
+interface DefaultMetadata {
+  language: string;        // Browser language
+  page_title: string;      // Current page title
+  pathname: string;        // Current pathname
+  querystring: string;     // Current query string
+  referrer: string;        // Document referrer
+  screen_height: number;   // Viewport height
+  screen_width: number;    // Viewport width
+  user_agent: string;      // Browser user agent
+  timezone: string;        // User's timezone
+  url: string;            // Current full URL
+}
+```
 
 ### Element Path Generation
 
@@ -96,8 +135,6 @@ The foundational hook for tracking custom events with optional element reference
 
 ```typescript
 const track = useTrackEvent<EventType, MetadataType, ElementType>(
-  type: EventType,
-  metadata: MetadataType,
   options?: {
     elementRef?: React.RefObject<ElementType>;
     elementId?: string;
@@ -108,8 +145,6 @@ const track = useTrackEvent<EventType, MetadataType, ElementType>(
 
 #### Parameters
 
-- **type** (`string`): Unique identifier for the event type
-- **metadata** (`Record<string, any>`): Custom data to include with the event
 - **options** (`object`, optional):
   - `elementRef`: Reference to a DOM element to associate with the event
   - `elementId`: Custom identifier for the element
@@ -117,7 +152,7 @@ const track = useTrackEvent<EventType, MetadataType, ElementType>(
 
 #### Returns
 
-- **track** (`function`): Function to trigger the event tracking
+- **track** (`function`): Function that accepts `(type: string, metadata: Record<string, any>)` to trigger event tracking
 
 #### Examples
 
@@ -125,13 +160,13 @@ const track = useTrackEvent<EventType, MetadataType, ElementType>(
 
 ```jsx
 function NewsletterSignup() {
-  const trackSignup = useTrackEvent('newsletter_signup', {
-    source: 'homepage',
-    campaign: 'spring_2024'
-  });
+  const track = useTrackEvent();
 
   const handleSubmit = () => {
-    trackSignup();
+    track('newsletter_signup', {
+      source: 'homepage',
+      campaign: 'spring_2024'
+    });
     // Handle form submission
   };
 
@@ -144,20 +179,23 @@ function NewsletterSignup() {
 ```jsx
 function ProductCard({ product }) {
   const buttonRef = useRef(null);
-  const trackPurchase = useTrackEvent(
-    'product_purchase_click',
-    { productId: product.id, price: product.price },
-    { 
-      elementRef: buttonRef,
-      includeElementPath: true,
-      elementId: `product-${product.id}-buy-btn`
-    }
-  );
+  const track = useTrackEvent({ 
+    elementRef: buttonRef,
+    includeElementPath: true,
+    elementId: `product-${product.id}-buy-btn`
+  });
+
+  const handlePurchase = () => {
+    track('product_purchase_click', {
+      productId: product.id, 
+      price: product.price
+    });
+  };
 
   return (
     <div>
       <h3>{product.name}</h3>
-      <button ref={buttonRef} onClick={trackPurchase}>
+      <button ref={buttonRef} onClick={handlePurchase}>
         Buy Now - ${product.price}
       </button>
     </div>
@@ -173,8 +211,6 @@ A convenience hook that provides both an element ref and tracking function, elim
 
 ```typescript
 const { elementRef, track } = useTrackElementEvent<EventType, MetadataType, ElementType>(
-  type: EventType,
-  metadata: MetadataType,
   options?: {
     includeElementPath?: boolean;
     elementId?: string;
@@ -182,10 +218,16 @@ const { elementRef, track } = useTrackElementEvent<EventType, MetadataType, Elem
 )
 ```
 
+#### Parameters
+
+- **options** (`object`, optional):
+  - `includeElementPath`: Whether to generate and include the CSS selector path
+  - `elementId`: Custom identifier for the element
+
 #### Returns
 
 - **elementRef** (`React.RefObject<ElementType>`): Ref to attach to your element
-- **track** (`function`): Function to trigger the event tracking
+- **track** (`function`): Function that accepts `(type: string, metadata: Record<string, any>)` to trigger event tracking
 
 #### Examples
 
@@ -193,14 +235,19 @@ const { elementRef, track } = useTrackElementEvent<EventType, MetadataType, Elem
 
 ```jsx
 function CallToAction() {
-  const { elementRef, track } = useTrackElementEvent(
-    'cta_click',
-    { location: 'header', variant: 'primary' },
-    { includeElementPath: true }
-  );
+  const { elementRef, track } = useTrackElementEvent({
+    includeElementPath: true
+  });
+
+  const handleClick = () => {
+    track('cta_click', {
+      location: 'header', 
+      variant: 'primary'
+    });
+  };
 
   return (
-    <button ref={elementRef} onClick={track} className="cta-button">
+    <button ref={elementRef} onClick={handleClick} className="cta-button">
       Get Started Today
     </button>
   );
@@ -211,13 +258,13 @@ function CallToAction() {
 
 ```jsx
 function SearchBox() {
-  const { elementRef, track } = useTrackElementEvent(
-    'search_initiated',
-    { feature: 'global_search' }
-  );
+  const { elementRef, track } = useTrackElementEvent();
 
   const handleSearch = (query) => {
-    track();
+    track('search_initiated', {
+      feature: 'global_search',
+      query: query
+    });
     // Perform search
   };
 
@@ -248,6 +295,15 @@ const { startTracking, endTracking } = useTrackDuration<EventType, ElementType>(
   }
 )
 ```
+
+#### Parameters
+
+- **type** (`string`): Event type identifier
+- **metadata** (`Record<string, any>`, optional): Base metadata to include
+- **options** (`object`, optional):
+  - `elementRef`: Reference to a DOM element to associate with the event
+  - `elementId`: Custom identifier for the element
+  - `includeElementPath`: Whether to generate and include the CSS selector path
 
 #### Returns
 
@@ -343,6 +399,14 @@ const elementRef = useTrackClicks<EventType, ElementType>(
 )
 ```
 
+#### Parameters
+
+- **type** (`string`): Event type identifier
+- **metadata** (`Record<string, any>`, optional): Base metadata to include
+- **options** (`object`, optional):
+  - `includeElementPath`: Whether to generate and include the CSS selector path
+  - `elementId`: Custom identifier for the element
+
 #### Returns
 
 - **elementRef** (`React.RefObject<ElementType>`): Ref to attach to the clickable element
@@ -427,9 +491,18 @@ const elementRef = useTrackVisibility<EventType, ElementType>(
 
 #### Parameters
 
-- **threshold** (`number`, default: 0.5): Visibility threshold (0.0 to 1.0)
-- **trackOnlyVisible** (`boolean`): Only track when element becomes visible
-- **trackOnlyOnce** (`boolean`): Track only the first visibility event
+- **type** (`string`): Event type identifier
+- **metadata** (`Record<string, any>`, optional): Base metadata to include
+- **options** (`object`, optional):
+  - `threshold` (`number`, default: 0.5): Visibility threshold (0.0 to 1.0)
+  - `elementId`: Custom identifier for the element
+  - `includeElementPath`: Whether to generate and include the CSS selector path
+  - `trackOnlyVisible` (`boolean`): Only track when element becomes visible
+  - `trackOnlyOnce` (`boolean`): Track only the first visibility event
+
+#### Returns
+
+- **elementRef** (`React.RefObject<ElementType>`): Ref to attach to the element to track
 
 #### Event Data
 
@@ -566,18 +639,15 @@ function CustomAnalytics() {
 
 ```jsx
 function ConditionalTracking({ isVip, userId }) {
-  const trackAction = useTrackEvent(
-    'user_action',
-    { 
-      userId, 
-      userTier: isVip ? 'vip' : 'standard',
-      timestamp: Date.now()
-    }
-  );
+  const track = useTrackEvent();
 
   const handleAction = () => {
     if (isVip) {
-      trackAction();
+      track('user_action', {
+        userId, 
+        userTier: 'vip',
+        timestamp: Date.now()
+      });
     }
     // Perform action
   };
@@ -590,20 +660,24 @@ function ConditionalTracking({ isVip, userId }) {
 
 ```jsx
 function MultiEventButton({ productId }) {
-  const { elementRef, track: trackClick } = useTrackElementEvent(
-    'product_interaction',
-    { type: 'click', productId }
-  );
+  const { elementRef, track } = useTrackElementEvent();
 
   const { startTracking, endTracking } = useTrackDuration(
     'product_hover_duration',
     { productId }
   );
 
+  const handleClick = () => {
+    track('product_interaction', {
+      type: 'click', 
+      productId
+    });
+  };
+
   return (
     <button
       ref={elementRef}
-      onClick={trackClick}
+      onClick={handleClick}
       onMouseEnter={startTracking}
       onMouseLeave={endTracking}
     >
@@ -617,15 +691,14 @@ function MultiEventButton({ productId }) {
 
 ```jsx
 function CheckoutFlow({ step }) {
-  const trackStepView = useTrackEvent('checkout_step_viewed', { step });
-  const trackStepComplete = useTrackEvent('checkout_step_completed', { step });
+  const track = useTrackEvent();
 
   useEffect(() => {
-    trackStepView();
+    track('checkout_step_viewed', { step });
   }, [step]);
 
   const handleNext = () => {
-    trackStepComplete();
+    track('checkout_step_completed', { step });
     // Proceed to next step
   };
 
@@ -636,6 +709,34 @@ function CheckoutFlow({ step }) {
     </div>
   );
 }
+```
+
+### Using Default Metadata
+
+```jsx
+function App() {
+  return (
+    <AnalyticsProvider
+      config={{
+        userId: 'user123',
+        sessionId: 'session456',
+        defaultMetadata: {
+          appVersion: '1.2.0',
+          experiment: 'checkout_flow_v2'
+        }
+      }}
+    >
+      <YourApp />
+    </AnalyticsProvider>
+  );
+}
+
+// All events will automatically include:
+// - userId: 'user123'
+// - sessionId: 'session456' 
+// - appVersion: '1.2.0'
+// - experiment: 'checkout_flow_v2'
+// Plus all the standard environment metadata
 ```
 
 ## Best Practices
@@ -687,7 +788,11 @@ const metadata = useMemo(() => ({
   timestamp: Date.now()
 }), [data]);
 
-const track = useTrackEvent('event', metadata);
+const track = useTrackEvent();
+
+const handleEvent = () => {
+  track('event', metadata);
+};
 ```
 
 ### 4. Element Path Usage
@@ -696,14 +801,30 @@ Use `includeElementPath` strategically:
 
 ```jsx
 // ✅ Useful for debugging and detailed analysis
-const track = useTrackEvent('button_click', metadata, {
+const { elementRef, track } = useTrackElementEvent({
   includeElementPath: true // For A/B testing, debugging
 });
 
 // ✅ Skip for high-frequency events to reduce payload
-const track = useTrackEvent('scroll_event', metadata, {
+const scrollRef = useTrackVisibility('scroll_event', metadata, {
   includeElementPath: false // Skip for performance
 });
+```
+
+### 5. Debug Mode
+
+Enable debug mode during development:
+
+```jsx
+// Development
+<AnalyticsProvider config={{ debug: true, environment: 'dev' }}>
+  <App />
+</AnalyticsProvider>
+
+// Production
+<AnalyticsProvider config={{ debug: false, environment: 'prod' }}>
+  <App />
+</AnalyticsProvider>
 ```
 
 ## TypeScript Support
@@ -712,33 +833,34 @@ The library provides full TypeScript support with generic type parameters:
 
 ```typescript
 // Strongly typed event and metadata
-const track = useTrackEvent<
-  'user_registration', 
-  { source: string; campaign?: string },
-  HTMLButtonElement
->(
-  'user_registration',
-  { source: 'homepage', campaign: 'summer2024' },
-  { includeElementPath: true }
-);
+const track = useTrackEvent<HTMLButtonElement>({
+  includeElementPath: true
+});
 
-// Custom event interfaces
-interface PurchaseEvent {
+// Usage with type safety
+track('user_registration', {
+  source: 'homepage',
+  campaign: 'summer2024'
+});
+
+// Custom interfaces
+interface PurchaseMetadata {
   productId: string;
   price: number;
   currency: string;
   quantity: number;
 }
 
-const trackPurchase = useTrackEvent<'purchase', PurchaseEvent>(
-  'purchase',
-  {
+const { elementRef, track } = useTrackElementEvent<HTMLButtonElement>();
+
+const handlePurchase = () => {
+  track('purchase', {
     productId: 'prod_123',
     price: 29.99,
     currency: 'USD',
     quantity: 1
-  }
-);
+  } as PurchaseMetadata);
+};
 ```
 
 ### Type Definitions
@@ -748,10 +870,26 @@ const trackPurchase = useTrackEvent<'purchase', PurchaseEvent>(
 interface Event {
   type: string;
   metadata: Record<string, any>;
+  defaultMetadata: Record<string, any>;
   timestamp: number;
-  elementRef?: HTMLElement;
-  elementPath?: string;
-  elementId?: string;
+  element: {
+    elementRef?: HTMLElement;
+    elementPath?: string;
+    elementId?: string;
+  };
+}
+
+// Config type
+interface Config {
+  batchInterval?: number;
+  environment?: 'prod' | 'dev';
+  metadataInterval?: number;
+  defaultMetadata?: Record<string, any>;
+  sendMetadata?: boolean;
+  userId?: any;
+  debug?: boolean;
+  sessionId?: any;
+  sendMetadataOnlyWhenVisible?: boolean;
 }
 
 // Hook options
@@ -772,4 +910,4 @@ interface VisibilityOptions {
 
 ---
 
-This documentation provides comprehensive coverage of all analytics hooks with practical examples and best practices. For additional support or feature requests, please refer to the project repository or contact the development team.
+This documentation provides comprehensive coverage of all analytics hooks with practical examples and best practices. The library now supports more flexible event tracking with the updated API that separates tracking configuration from event data, making it easier to reuse tracking functions across different events.
