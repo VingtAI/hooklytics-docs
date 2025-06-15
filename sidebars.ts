@@ -1,4 +1,4 @@
-import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
+import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -20,17 +20,16 @@ const sidebars: SidebarsConfig = {
 
   tutorialSidebar: [
     {
-      type: 'doc',
-      id: 'intro', // Use `id` instead of `items` for ref type
-      label: 'Get Started',
+      type: "doc",
+      id: "intro", // Use `id` instead of `items` for ref type
+      label: "Get Started",
     },
     {
-      type: 'doc',
-      id: 'examples', // points to docs/examples.md
-      label: 'Examples',
+      type: "doc",
+      id: "route-integration", // points to docs/examples.md
+      label: "Route Integration",
     },
-  ]
-
+  ],
 };
 
 export default sidebars;

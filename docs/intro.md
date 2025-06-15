@@ -49,10 +49,9 @@ function App() {
           "screen_width": 1200,
           "user_agent": "Mozilla",
           "timezone": "",
-          "url": "http://localhost:5173/"
+          "url": "http://localhost:5173/",
+          "userId": ""
         },
-        userId: 'user123',                     // Optional: user identifier
-        sessionId: 'session456',               // Optional: session identifier
         debug: false,                          // Optional: enable debug logging
       }}
     >
@@ -72,10 +71,9 @@ The `AnalyticsProvider` accepts an optional `config` object:
 | `batchInterval`                | `number`                | `1000`  | Interval (in ms) to batch and send events            |
 | `metadataInterval`             | `number`                | `5000`  | Interval (in ms) to send core environment data       |
 | `sendMetadata`                 | `boolean`               | `true`  | Whether to automatically send metadata heartbeats    |
+| `staticMetadata`               | `Record<string, any>`   | `{}`    | Static metadata overrides that don't change (e.g., userId, app version)|
 | `sendMetadataOnlyWhenVisible`  | `boolean`               | `false` | Only send metadata when page is visible              |
 | `defaultMetadata`              | `Record<string, any>`   | `{}`    | Additional default metadata to include with events   |
-| `userId`                       | `any`                   | -       | User identifier to include in default metadata       |
-| `sessionId`                    | `any`                   | -       | Session identifier to include in default metadata    |
 | `debug`                        | `boolean`               | `false` | Enable debug logging for events                      |
 
 ---
@@ -885,18 +883,12 @@ interface Config {
   environment?: 'prod' | 'dev';
   metadataInterval?: number;
   defaultMetadata?: Record<string, any>;
+  staticMetadata?: Record<string, any>;
   sendMetadata?: boolean;
   userId?: any;
   debug?: boolean;
   sessionId?: any;
   sendMetadataOnlyWhenVisible?: boolean;
-}
-
-// Hook options
-interface TrackingOptions<E extends HTMLElement = HTMLElement> {
-  elementRef?: React.RefObject<E>;
-  elementId?: string;
-  includeElementPath?: boolean;
 }
 
 interface VisibilityOptions {
