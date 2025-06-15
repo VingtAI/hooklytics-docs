@@ -39,19 +39,6 @@ function App() {
         metadataInterval: 5000,                // Optional: how often to send metadata heartbeat (ms)
         sendMetadata: true,                    // Optional: whether to send metadata heartbeats
         sendMetadataOnlyWhenVisible: false,    // Optional: only send metadata when page is visible
-        defaultMetadata: {                     // Optional: additional default metadata, comes with this
-          "language": "en-GB",
-          "page_title": "Vite + React + TS",
-          "pathname": "/",
-          "querystring": "",
-          "referrer": "http://localhost:5173/",
-          "screen_height": 1200,
-          "screen_width": 1200,
-          "user_agent": "Mozilla",
-          "timezone": "",
-          "url": "http://localhost:5173/",
-          "userId": ""
-        },
         debug: false,                          // Optional: enable debug logging
       }}
     >

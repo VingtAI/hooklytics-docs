@@ -110,8 +110,8 @@ const config: Config = {
               to: "/docs/intro",
             },
             {
-              label: "Examples",
-              to: "/docs/examples",
+              label: "Route Integration",
+              to: "/docs/route-integration",
             },
           ],
         },

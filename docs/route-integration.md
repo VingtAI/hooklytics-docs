@@ -83,7 +83,8 @@ function App() {
 
 ## Next.js
 
-### App Router (`app/` directory)
+### App Router
+-  (`app/` directory)
 
 ```tsx
 // app/layout.tsx
@@ -102,7 +103,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-### Pages Router (`pages/_app.tsx`)
+### Pages Router 
+- (`pages/_app.tsx`)
 
 ```tsx
 // pages/_app.tsx
